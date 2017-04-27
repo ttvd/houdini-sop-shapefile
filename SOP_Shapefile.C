@@ -307,6 +307,8 @@ SOP_Shapefile::addShapePoint(SHPObject* shp_object)
             //SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_TYPE
         }
     }
+
+    return true;
 }
 
 
