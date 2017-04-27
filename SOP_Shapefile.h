@@ -32,8 +32,8 @@ class SOP_Shapefile : public SOP_Node
 
     protected:
 
-        //! Process a 2D points shape.
-        bool addShapePoint2D(SHPObject* shp_object);
+        //! Process a points shape.
+        bool addShapePoint(SHPObject* shp_object);
 
     protected:
 

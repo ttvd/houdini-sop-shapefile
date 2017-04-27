@@ -19,6 +19,10 @@
 
 #define SOP_SHAPEFILE_PARAM_FILE "shape_file"
 
+#define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM "point_shape_num"
+#define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM "point_shape_part_num"
+#define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_TYPE "point_shape_type"
+
 
 static PRM_Name s_name_file(SOP_SHAPEFILE_PARAM_FILE, "Shape File");
 static PRM_SpareData s_shape_file_picker(PRM_SpareArgs() << PRM_SpareToken(PRM_SpareData::getFileChooserModeToken(),
@@ -127,10 +131,11 @@ SOP_Shapefile::cookMySop(OP_Context& context)
         switch(shp_object->nSHPType)
         {
             case SHPT_POINT:
+            case SHPT_POINTZ:
             {
-                if(!addShapePoint2D(shp_object))
+                if(!addShapePoint(shp_object))
                 {
-                    processWarning("Skipping an invalid 2D point shape.");
+                    processWarning("Skipping an invalid point shape.");
                 }
 
                 break;
@@ -147,11 +152,6 @@ SOP_Shapefile::cookMySop(OP_Context& context)
             }
 
             case SHPT_MULTIPOINT:
-            {
-                break;
-            }
-
-            case SHPT_POINTZ:
             {
                 break;
             }
@@ -265,9 +265,14 @@ SOP_Shapefile::getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& v
 
 
 bool
-SOP_Shapefile::addShapePoint2D(SHPObject* shp_object)
+SOP_Shapefile::addShapePoint(SHPObject* shp_object)
 {
-    if(!shp_object || shp_object->nSHPType != SHPT_POINT)
+    if(!shp_object)
+    {
+        return false;
+    }
+
+    if(shp_object->nSHPType != SHPT_POINT && shp_object->nSHPType != SHPT_POINTZ)
     {
         return false;
     }
@@ -284,8 +289,22 @@ SOP_Shapefile::addShapePoint2D(SHPObject* shp_object)
 
         for(int idx = vertex_first; idx <= vertex_last; ++idx)
         {
+            float px = shp_object->padfX[idx];
+            float py = shp_object->padfY[idx];
+
+            float pz = 0.0f;
+
+            if(shp_object->nSHPType == SHPT_POINTZ)
+            {
+                pz = shp_object->padfZ[idx];
+            }
+
             GA_Offset point_offset = gdp->appendPoint();
-            gdp->setPos3(point_offset, shp_object->padfX[idx], shp_object->padfY[idx], 0.0f);
+            gdp->setPos3(point_offset, px, py, pz);
+
+            //SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM
+            //SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM
+            //SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_TYPE
         }
     }
 }
