@@ -69,6 +69,8 @@ SOP_Shapefile::cookMySop(OP_Context& context)
         return error();
     }
 
+    gdp->clearAndDestroy();
+
     // Get current execution time for parameter evaluation.
     fpreal t = context.getTime();
 
@@ -88,7 +90,7 @@ SOP_Shapefile::cookMySop(OP_Context& context)
 
     // Retrieve the number of entities and their types.
     int shp_num_entities = 0;
-    int shp_entities_type = SHPT_POINT;
+    int shp_entities_type = SHPT_NULL;
     SHPGetInfo(shp_handle, &shp_num_entities, &shp_entities_type, nullptr, nullptr);
 
     if(!shp_num_entities)
@@ -113,6 +115,72 @@ SOP_Shapefile::cookMySop(OP_Context& context)
         {
             processWarning("Skipping a null shape.");
             continue;
+        }
+
+        // Make sure we have parts in this shape.
+        if(!shp_object->nParts)
+        {
+            processWarning("Skipping a shape with zero parts.");
+            continue;
+        }
+
+        switch(shp_object->nSHPType)
+        {
+            case SHPT_POINT:
+            {
+                if(!addShapePoint2D(shp_object))
+                {
+                    processWarning("Skipping an invalid 2D point shape.");
+                }
+
+                break;
+            }
+
+            case SHPT_ARC:
+            {
+                break;
+            }
+
+            case SHPT_POLYGON:
+            {
+                break;
+            }
+
+            case SHPT_MULTIPOINT:
+            {
+                break;
+            }
+
+            case SHPT_POINTZ:
+            {
+                break;
+            }
+
+            case SHPT_ARCZ:
+            {
+                break;
+            }
+
+            case SHPT_POLYGONZ:
+            {
+                break;
+            }
+
+            case SHPT_MULTIPOINTZ:
+            {
+                break;
+            }
+
+            case SHPT_POINTM:
+            case SHPT_ARCM:
+            case SHPT_POLYGONM:
+            case SHPT_MULTIPOINTM:
+            case SHPT_MULTIPATCH:
+            default:
+            {
+                processWarning("Skipping unsupported shape.");
+                break;
+            }
         }
     }
 
@@ -166,6 +234,60 @@ SOP_Shapefile::getParamShapefile(UT_String& shape_file, fpreal t) const
     }
 
     return true;
+}
+
+
+bool
+SOP_Shapefile::getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& vertex_first, int& vertex_last) const
+{
+    vertex_first = 0;
+    vertex_last = 0;
+
+    if(!shp_object || part_idx < 0 || shp_object->nParts >= part_idx)
+    {
+        return false;
+    }
+
+    vertex_first = shp_object->panPartStart[part_idx];
+    vertex_last = vertex_first;
+
+    if(part_idx == shp_object->nParts - 1)
+    {
+        vertex_last = shp_object->nVertices - 1;
+    }
+    else
+    {
+        vertex_last = shp_object->panPartStart[part_idx + 1] - 1;
+    }
+
+    return true;
+}
+
+
+bool
+SOP_Shapefile::addShapePoint2D(SHPObject* shp_object)
+{
+    if(!shp_object || shp_object->nSHPType != SHPT_POINT)
+    {
+        return false;
+    }
+
+    for(int idp = 0; idp < shp_object->nParts; ++idp)
+    {
+        int vertex_first = 0;
+        int vertex_last = 0;
+
+        if(!getShapeVertexIndices(shp_object, idp, vertex_first, vertex_last))
+        {
+            return false;
+        }
+
+        for(int idx = vertex_first; idx <= vertex_last; ++idx)
+        {
+            GA_Offset point_offset = gdp->appendPoint();
+            gdp->setPos3(point_offset, shp_object->padfX[idx], shp_object->padfY[idx], 0.0f);
+        }
+    }
 }
 
 
