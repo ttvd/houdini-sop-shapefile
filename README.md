@@ -1,6 +1,6 @@
 # houdini-sop-shapefile
 
-[Houdini](http://www.sidefx.com/index.php) HDK SOP node which Shapefile SHP files using [Shapefile C Library](http://shapelib.maptools.org).
+[Houdini](http://www.sidefx.com/index.php) HDK SOP node which loads Shapefile SHP files using [Shapefile C Library](http://shapelib.maptools.org).
 
 ## More info
 * [Shapefile C Library](http://shapelib.maptools.org)
