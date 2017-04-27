@@ -185,6 +185,10 @@ else()
     message(FATAL_ERROR "Unsupported platform.")
 endif()
 
+# Add dependency on shapelib.
+set(SHP_BUILD_STATIC TRUE)
+add_subdirectory(shapelib)
+
 # Add common definitions.
 add_definitions(
     -DMAKING_DSO
