@@ -26,6 +26,9 @@ class SOP_Shapefile : public SOP_Node
         //! Return and process an error.
         OP_ERROR processError(OP_Context& context, const char* reason);
 
+        //! Process a warning.
+        void processWarning(const char* reason);
+
     protected:
 
         //! Retrieve shapefile file.

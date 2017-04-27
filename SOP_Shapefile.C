@@ -76,9 +76,48 @@ SOP_Shapefile::cookMySop(OP_Context& context)
     UT_String shape_file_path = "";
     if(!getParamShapefile(shape_file_path, t))
     {
-        processError(context, "Invalid shapefile specified.");
+        return processError(context, "Invalid shapefile specified.");
     }
 
+    // Create shapefile handle.
+    SHPHandle shp_handle = SHPOpen(shape_file_path.c_str(), "rb");
+    if(!shp_handle)
+    {
+        return processError(context, "Unable to open shapefile for reading.");
+    }
+
+    // Retrieve the number of entities and their types.
+    int shp_num_entities = 0;
+    int shp_entities_type = SHPT_POINT;
+    SHPGetInfo(shp_handle, &shp_num_entities, &shp_entities_type, nullptr, nullptr);
+
+    if(!shp_num_entities)
+    {
+        SHPClose(shp_handle);
+        return processError(context, "No shapes were found.");
+    }
+
+    // Process all shapes in a file.
+    for(int ids = 0; ids < shp_entities_type; ++ids)
+    {
+        // Retrieve shape object at this index.
+        SHPObject* shp_object = SHPReadObject(shp_handle, ids);
+        if(!shp_object)
+        {
+            processWarning("Invalid object.");
+            continue;
+        }
+
+        // If shape type is invalid, skip.
+        if(shp_object->nSHPType == SHPT_NULL)
+        {
+            processWarning("Skipping a null shape.");
+            continue;
+        }
+    }
+
+    // Close the handle.
+    SHPClose(shp_handle);
     return error(context);
 }
 
@@ -86,11 +125,26 @@ SOP_Shapefile::cookMySop(OP_Context& context)
 OP_ERROR
 SOP_Shapefile::processError(OP_Context& context, const char* reason)
 {
-    UT_WorkBuffer buf;
-    buf.sprintf("Shapefile: %s", reason);
-    addError(SOP_MESSAGE, buf.buffer());
+    if(reason)
+    {
+        UT_WorkBuffer buf;
+        buf.sprintf("Shapefile: %s", reason);
+        addError(SOP_MESSAGE, buf.buffer());
+    }
 
     return error(context);
+}
+
+
+void
+SOP_Shapefile::processWarning(const char* reason)
+{
+    if(reason)
+    {
+        UT_WorkBuffer buf;
+        buf.sprintf("Shapefile: %s", reason);
+        addWarning(SOP_MESSAGE, buf.buffer());
+    }
 }
 
 
