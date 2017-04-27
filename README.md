@@ -38,4 +38,5 @@
   * Otherwise you are free to do pretty much anything you want with this code.
   
 ## License for [Shapefile C Library](http://shapelib.maptools.org)
-* MIT, [Full Shapefile C Library License](http://shapelib.maptools.org/license.html)
+* MIT
+* [Full Shapefile C Library License](http://shapelib.maptools.org/license.html)
