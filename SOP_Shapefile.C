@@ -8,6 +8,8 @@
 #include <GU/GU_Detail.h>
 #include <GU/GU_PrimPoly.h>
 
+#include <shapefil.h>
+
 
 #define SOP_SHAPEFILE_NAME "shapefile"
 #define SOP_SHAPEFILE_DESCRIPTION "ShapeFile"

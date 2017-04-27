@@ -205,6 +205,7 @@ add_definitions(
 
 # Set include directories.
 include_directories(${SOP_SHAPEFILE_INCLUDE_DIRECTORIES})
+include_directories(shapelib)
 
 # Set link directories.
 link_directories(${SOP_SHAPEFILE_LINK_DIRECTORIES})
@@ -230,4 +231,4 @@ set(SOP_SHAPEFILE_SOURCE
 )
 
 add_library(SOP_Shapefile SHARED ${SOP_SHAPEFILE_INCLUDE} ${SOP_SHAPEFILE_SOURCE})
-target_link_libraries(SOP_Shapefile ${SOP_SHAPEFILE_LIBS})
+target_link_libraries(SOP_Shapefile ${SOP_SHAPEFILE_LIBS} shp)
