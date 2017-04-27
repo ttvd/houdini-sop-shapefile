@@ -37,5 +37,5 @@
   * **You cannot use any of this code in a GPL project.**
   * Otherwise you are free to do pretty much anything you want with this code.
   
-## License [Shapefile C Library](http://shapelib.maptools.org)
+## License for [Shapefile C Library](http://shapelib.maptools.org)
 * MIT, [Full Shapefile C Library License](http://shapelib.maptools.org/license.html)
