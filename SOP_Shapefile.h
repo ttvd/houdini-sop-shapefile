@@ -35,6 +35,9 @@ class SOP_Shapefile : public SOP_Node
         //! Process a points shape.
         bool addShapePoint(SHPObject* shp_object, fpreal t);
 
+        //! Process polygon shapes.
+        bool addShapePolygon(SHPObject* shp_object, fpreal t);
+
     protected:
 
         //! Helper function used to retrieve first and last vertex for a given shape part.
@@ -56,8 +59,16 @@ class SOP_Shapefile : public SOP_Node
         //! Set shape part number (and create an attribute if necessary) on a point.
         void setPointAttributeShapePartNumber(GA_Offset point_offset, int shape_part_number);
 
-        //! Helper function to set an integer attribute on a point.
-        void setPointAttribute(GA_Offset point_offset, const UT_String& attribute_name, int attribute_value);
+        //! Set shape number (and create an attribute if necessary) on a primitive.
+        void setPrimitiveAttributeShapeNumber(GA_Offset point_offset, int shape_number);
+
+        //! Set shape part number (and create an attribute if necessary) on a primitive.
+        void setPrimitiveAttributeShapePartNumber(GA_Offset point_offset, int shape_part_number);
+
+    protected:
+
+        //! Helper function to set an integer attribute on a specified owner.
+        void setAttribute(GA_Offset point_offset, GA_AttributeOwner attrib_owner, const UT_String& attribute_name, int attribute_value);
 
     protected:
 

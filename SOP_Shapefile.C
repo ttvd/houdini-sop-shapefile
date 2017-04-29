@@ -24,7 +24,11 @@
 #define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM "point_shape_num"
 #define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM "point_shape_part_num"
 
+#define SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_NUM "primitive_shape_num"
+#define SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_PART_NUM "primitive_shape_part_num"
+
 #define SOP_SHAPEFILE_GROUP_SHAPE_POINT "shape_point"
+#define SOP_SHAPEFILE_GROUP_SHAPE_POLYGON "shape_polygon"
 
 
 static PRM_Name s_name_file(SOP_SHAPEFILE_PARAM_FILE, "Shape File");
@@ -158,7 +162,13 @@ SOP_Shapefile::cookMySop(OP_Context& context)
             }
 
             case SHPT_POLYGON:
+            case SHPT_POLYGONZ:
             {
+                if(!addShapePolygon(shp_object, t))
+                {
+                    processWarning("Skipping an invalid polygon shape.");
+                }
+
                 break;
             }
 
@@ -168,11 +178,6 @@ SOP_Shapefile::cookMySop(OP_Context& context)
             }
 
             case SHPT_ARCZ:
-            {
-                break;
-            }
-
-            case SHPT_POLYGONZ:
             {
                 break;
             }
@@ -350,6 +355,42 @@ SOP_Shapefile::addShapePoint(SHPObject* shp_object, fpreal t)
 }
 
 
+bool
+SOP_Shapefile::addShapePolygon(SHPObject* shp_object, fpreal t)
+{
+    if(!shp_object)
+    {
+        return false;
+    }
+
+    if(shp_object->nSHPType != SHPT_POLYGON && shp_object->nSHPType != SHPT_POLYGONZ)
+    {
+        return false;
+    }
+
+    GA_PrimitiveGroup* group_primitive = nullptr;
+    if(getParamCreateShapeGroups(t))
+    {
+        group_primitive = findGroupPrimitive(SOP_SHAPEFILE_GROUP_SHAPE_POLYGON);
+    }
+
+    for(int idp = 0; idp < shp_object->nParts; ++idp)
+    {
+        int vertex_first = 0;
+        int vertex_last = 0;
+
+        if(!getShapeVertexIndices(shp_object, idp, vertex_first, vertex_last))
+        {
+            return false;
+        }
+
+        // process...
+    }
+
+    return true;
+}
+
+
 GA_PointGroup*
 SOP_Shapefile::findGroupPoint(const UT_String& group_name) const
 {
@@ -391,31 +432,45 @@ SOP_Shapefile::findGroupPrimitive(const UT_String& group_name) const
 void
 SOP_Shapefile::setPointAttributeShapeNumber(GA_Offset point_offset, int32 shape_number)
 {
-    setPointAttribute(point_offset, SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM, shape_number);
+    setAttribute(point_offset, GA_ATTRIB_POINT, SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM, shape_number);
 }
 
 
 void
 SOP_Shapefile::setPointAttributeShapePartNumber(GA_Offset point_offset, int32 shape_part_number)
 {
-    setPointAttribute(point_offset, SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM, shape_part_number);
+    setAttribute(point_offset, GA_ATTRIB_POINT, SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM, shape_part_number);
 }
 
 
 void
-SOP_Shapefile::setPointAttribute(GA_Offset point_offset, const UT_String& attribute_name, int attribute_value)
+SOP_Shapefile::setPrimitiveAttributeShapeNumber(GA_Offset point_offset, int32 shape_number)
+{
+    setAttribute(point_offset, GA_ATTRIB_PRIMITIVE, SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_NUM, shape_number);
+}
+
+
+void
+SOP_Shapefile::setPrimitiveAttributeShapePartNumber(GA_Offset point_offset, int32 shape_part_number)
+{
+    setAttribute(point_offset, GA_ATTRIB_PRIMITIVE, SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_PART_NUM, shape_part_number);
+}
+
+
+void
+SOP_Shapefile::setAttribute(GA_Offset point_offset, GA_AttributeOwner attrib_owner, const UT_String& attribute_name, int attribute_value)
 {
     if(GA_INVALID_OFFSET == point_offset || !attribute_name.isValidVariableName())
     {
         return;
     }
 
-    GA_Attribute* attribute = gdp->findIntTuple(GA_ATTRIB_POINT, attribute_name, 1);
+    GA_Attribute* attribute = gdp->findIntTuple(attrib_owner, attribute_name, 1);
     GA_RWHandleI handle_attribute(attribute);
 
     if(!handle_attribute.isValid())
     {
-        attribute = gdp->addIntTuple(GA_ATTRIB_POINT, attribute_name, 1);
+        attribute = gdp->addIntTuple(attrib_owner, attribute_name, 1);
         handle_attribute.bind(attribute);
 
         if(!handle_attribute.isValid())
