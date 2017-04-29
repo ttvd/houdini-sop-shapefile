@@ -404,15 +404,38 @@ SOP_Shapefile::addShapePolygon(SHPObject* shp_object, fpreal t)
 
     for(int idp = 0; idp < shp_object->nParts; ++idp)
     {
-        int vertex_first = 0;
-        int vertex_last = 0;
-
-        if(!getShapeVertexIndices(shp_object, idp, vertex_first, vertex_last))
+        UT_Array<UT_Vector3> point_positions;
+        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_POLYGONZ), point_positions))
         {
             return false;
         }
 
-        // process...
+        GU_PrimPoly* prim_poly = GU_PrimPoly::build(gdp, 0, GU_POLY_CLOSED);
+
+        for(int idx = 0; idx < point_positions.size(); ++idx)
+        {
+            const UT_Vector3& point_position = point_positions(idx);
+
+            GA_Offset point_offset = gdp->appendPoint();
+            gdp->setPos3(point_offset, point_position);
+
+            prim_poly->appendVertex(point_offset);
+        }
+
+        prim_poly->close();
+
+        if(group_primitive)
+        {
+            GA_Offset prim_offset = prim_poly->getMapOffset();
+            group_primitive->addOffset(prim_offset);
+        }
+
+        if(getParamCreateShapeAttributes(t))
+        {
+            GA_Offset prim_offset = prim_poly->getMapOffset();
+            setPrimitiveAttributeShapeNumber(prim_offset, shp_object->nShapeId);
+            setPrimitiveAttributeShapePartNumber(prim_offset, idp);
+        }
     }
 
     return true;
@@ -472,23 +495,23 @@ SOP_Shapefile::setPointAttributeShapePartNumber(GA_Offset point_offset, int32 sh
 
 
 void
-SOP_Shapefile::setPrimitiveAttributeShapeNumber(GA_Offset point_offset, int32 shape_number)
+SOP_Shapefile::setPrimitiveAttributeShapeNumber(GA_Offset prim_offset, int32 shape_number)
 {
-    setAttribute(point_offset, GA_ATTRIB_PRIMITIVE, SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_NUM, shape_number);
+    setAttribute(prim_offset, GA_ATTRIB_PRIMITIVE, SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_NUM, shape_number);
 }
 
 
 void
-SOP_Shapefile::setPrimitiveAttributeShapePartNumber(GA_Offset point_offset, int32 shape_part_number)
+SOP_Shapefile::setPrimitiveAttributeShapePartNumber(GA_Offset prim_offset, int32 shape_part_number)
 {
-    setAttribute(point_offset, GA_ATTRIB_PRIMITIVE, SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_PART_NUM, shape_part_number);
+    setAttribute(prim_offset, GA_ATTRIB_PRIMITIVE, SOP_SHAPEFILE_ATTRIB_PRIMITIVE_SHAPE_PART_NUM, shape_part_number);
 }
 
 
 void
-SOP_Shapefile::setAttribute(GA_Offset point_offset, GA_AttributeOwner attrib_owner, const UT_String& attribute_name, int attribute_value)
+SOP_Shapefile::setAttribute(GA_Offset offset, GA_AttributeOwner attrib_owner, const UT_String& attribute_name, int attribute_value)
 {
-    if(GA_INVALID_OFFSET == point_offset || !attribute_name.isValidVariableName())
+    if(GA_INVALID_OFFSET == offset || !attribute_name.isValidVariableName())
     {
         return;
     }
@@ -507,7 +530,7 @@ SOP_Shapefile::setAttribute(GA_Offset point_offset, GA_AttributeOwner attrib_own
         }
     }
 
-    handle_attribute.set(point_offset, attribute_value);
+    handle_attribute.set(offset, attribute_value);
 }
 
 

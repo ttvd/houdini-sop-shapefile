@@ -63,15 +63,15 @@ class SOP_Shapefile : public SOP_Node
         void setPointAttributeShapePartNumber(GA_Offset point_offset, int shape_part_number);
 
         //! Set shape number (and create an attribute if necessary) on a primitive.
-        void setPrimitiveAttributeShapeNumber(GA_Offset point_offset, int shape_number);
+        void setPrimitiveAttributeShapeNumber(GA_Offset prim_offset, int shape_number);
 
         //! Set shape part number (and create an attribute if necessary) on a primitive.
-        void setPrimitiveAttributeShapePartNumber(GA_Offset point_offset, int shape_part_number);
+        void setPrimitiveAttributeShapePartNumber(GA_Offset prim_offset, int shape_part_number);
 
     protected:
 
         //! Helper function to set an integer attribute on a specified owner.
-        void setAttribute(GA_Offset point_offset, GA_AttributeOwner attrib_owner, const UT_String& attribute_name, int attribute_value);
+        void setAttribute(GA_Offset offset, GA_AttributeOwner attrib_owner, const UT_String& attribute_name, int attribute_value);
 
     protected:
 
