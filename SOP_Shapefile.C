@@ -18,21 +18,32 @@
 #define SOP_SHAPEFILE_DESCRIPTION "ShapeFile"
 
 #define SOP_SHAPEFILE_PARAM_FILE "shape_file"
+#define SOP_SHAPEFILE_PARAM_CREATE_SHAPE_GROUPS "create_shape_groups"
+#define SOP_SHAPEFILE_PARAM_CREATE_SHAPE_ATTRIBUTES "create_shape_attributes"
 
 #define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM "point_shape_num"
 #define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM "point_shape_part_num"
-#define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_TYPE "point_shape_type"
+
+#define SOP_SHAPEFILE_GROUP_SHAPE_POINT "shape_point"
 
 
 static PRM_Name s_name_file(SOP_SHAPEFILE_PARAM_FILE, "Shape File");
+static PRM_Name s_name_create_shape_groups(SOP_SHAPEFILE_PARAM_CREATE_SHAPE_GROUPS, "Create Shape Groups");
+static PRM_Name s_name_create_shape_attributes(SOP_SHAPEFILE_PARAM_CREATE_SHAPE_ATTRIBUTES, "Create Shape Attributes");
 static PRM_SpareData s_shape_file_picker(PRM_SpareArgs() << PRM_SpareToken(PRM_SpareData::getFileChooserModeToken(),
     PRM_SpareData::getFileChooserModeValRead()) << PRM_SpareToken(PRM_SpareData::getFileChooserPatternToken(),
     SOP_Shapefile::fileExtensionFilterString()));
 
 
+static PRM_Default s_default_create_shape_groups(false);
+static PRM_Default s_default_create_shape_attributes(false);
+
+
 PRM_Template
 SOP_Shapefile::myTemplateList[] =
 {
+    PRM_Template(PRM_TOGGLE, 1, &s_name_create_shape_groups, &s_default_create_shape_groups),
+    PRM_Template(PRM_TOGGLE, 1, &s_name_create_shape_attributes, &s_default_create_shape_attributes),
     PRM_Template(PRM_FILE, 1, &s_name_file, 0, 0, 0, 0, &s_shape_file_picker),
     PRM_Template()
 };
@@ -133,7 +144,7 @@ SOP_Shapefile::cookMySop(OP_Context& context)
             case SHPT_POINT:
             case SHPT_POINTZ:
             {
-                if(!addShapePoint(shp_object))
+                if(!addShapePoint(shp_object, t))
                 {
                     processWarning("Skipping an invalid point shape.");
                 }
@@ -238,6 +249,20 @@ SOP_Shapefile::getParamShapefile(UT_String& shape_file, fpreal t) const
 
 
 bool
+SOP_Shapefile::getParamCreateShapeGroups(fpreal t) const
+{
+    return evalInt(SOP_SHAPEFILE_PARAM_CREATE_SHAPE_GROUPS, 0, t) != 0;
+}
+
+
+bool
+SOP_Shapefile::getParamCreateShapeAttributes(fpreal t) const
+{
+    return evalInt(SOP_SHAPEFILE_PARAM_CREATE_SHAPE_ATTRIBUTES, 0, t) != 0;
+}
+
+
+bool
 SOP_Shapefile::getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& vertex_first, int& vertex_last) const
 {
     vertex_first = 0;
@@ -265,7 +290,7 @@ SOP_Shapefile::getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& v
 
 
 bool
-SOP_Shapefile::addShapePoint(SHPObject* shp_object)
+SOP_Shapefile::addShapePoint(SHPObject* shp_object, fpreal t)
 {
     if(!shp_object)
     {
@@ -275,6 +300,12 @@ SOP_Shapefile::addShapePoint(SHPObject* shp_object)
     if(shp_object->nSHPType != SHPT_POINT && shp_object->nSHPType != SHPT_POINTZ)
     {
         return false;
+    }
+
+    GA_PointGroup* group_point = nullptr;
+    if(getParamCreateShapeGroups(t))
+    {
+        group_point = findGroupPoint(SOP_SHAPEFILE_GROUP_SHAPE_POINT);
     }
 
     for(int idp = 0; idp < shp_object->nParts; ++idp)
@@ -302,13 +333,98 @@ SOP_Shapefile::addShapePoint(SHPObject* shp_object)
             GA_Offset point_offset = gdp->appendPoint();
             gdp->setPos3(point_offset, px, py, pz);
 
-            //SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM
-            //SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM
-            //SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_TYPE
+            if(group_point)
+            {
+                group_point->addOffset(point_offset);
+            }
+
+            if(getParamCreateShapeAttributes(t))
+            {
+                setPointAttributeShapeNumber(point_offset, shp_object->nShapeId);
+                setPointAttributeShapePartNumber(point_offset, idp);
+            }
         }
     }
 
     return true;
+}
+
+
+GA_PointGroup*
+SOP_Shapefile::findGroupPoint(const UT_String& group_name) const
+{
+    if(!group_name.isstring())
+    {
+        return nullptr;
+    }
+
+    GA_PointGroup* group = gdp->findPointGroup(group_name);
+
+    if(!group)
+    {
+        group = gdp->newPointGroup(group_name);
+    }
+
+    return group;
+}
+
+
+GA_PrimitiveGroup*
+SOP_Shapefile::findGroupPrimitive(const UT_String& group_name) const
+{
+    if(!group_name.isstring())
+    {
+        return nullptr;
+    }
+
+    GA_PrimitiveGroup* group = gdp->findPrimitiveGroup(group_name);
+
+    if(!group)
+    {
+        group = gdp->newPrimitiveGroup(group_name);
+    }
+
+    return group;
+}
+
+
+void
+SOP_Shapefile::setPointAttributeShapeNumber(GA_Offset point_offset, int32 shape_number)
+{
+    setPointAttribute(point_offset, SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM, shape_number);
+}
+
+
+void
+SOP_Shapefile::setPointAttributeShapePartNumber(GA_Offset point_offset, int32 shape_part_number)
+{
+    setPointAttribute(point_offset, SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM, shape_part_number);
+}
+
+
+void
+SOP_Shapefile::setPointAttribute(GA_Offset point_offset, const UT_String& attribute_name, int attribute_value)
+{
+    if(GA_INVALID_OFFSET == point_offset || !attribute_name.isValidVariableName())
+    {
+        return;
+    }
+
+    GA_Attribute* attribute = gdp->findIntTuple(GA_ATTRIB_POINT, attribute_name, 1);
+    GA_RWHandleI handle_attribute(attribute);
+
+    if(!handle_attribute.isValid())
+    {
+        attribute = gdp->addIntTuple(GA_ATTRIB_POINT, attribute_name, 1);
+        handle_attribute.bind(attribute);
+
+        if(!handle_attribute.isValid())
+        {
+            return;
+        }
+    }
+
+    handle_attribute.set(point_offset, attribute_value);
 }
 
 
