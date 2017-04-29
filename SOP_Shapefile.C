@@ -295,6 +295,44 @@ SOP_Shapefile::getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& v
 
 
 bool
+SOP_Shapefile::getShapePointPositions(SHPObject* shp_object, int shp_idx, bool use_z,
+    UT_Array<UT_Vector3>& point_positions) const
+{
+    point_positions.clear();
+
+    if(!shp_object)
+    {
+        return false;
+    }
+
+    int vertex_first = 0;
+    int vertex_last = 0;
+
+    if(!getShapeVertexIndices(shp_object, shp_idx, vertex_first, vertex_last))
+    {
+        return false;
+    }
+
+    for(int idx = vertex_first; idx <= vertex_last; ++idx)
+    {
+        float px = shp_object->padfX[idx];
+        float py = shp_object->padfY[idx];
+
+        float pz = 0.0f;
+
+        if(use_z)
+        {
+            pz = shp_object->padfZ[idx];
+        }
+
+        point_positions.append(UT_Vector3(px, py, pz));
+    }
+
+    return point_positions.size() > 0;
+}
+
+
+bool
 SOP_Shapefile::addShapePoint(SHPObject* shp_object, fpreal t)
 {
     if(!shp_object)
@@ -315,28 +353,18 @@ SOP_Shapefile::addShapePoint(SHPObject* shp_object, fpreal t)
 
     for(int idp = 0; idp < shp_object->nParts; ++idp)
     {
-        int vertex_first = 0;
-        int vertex_last = 0;
-
-        if(!getShapeVertexIndices(shp_object, idp, vertex_first, vertex_last))
+        UT_Array<UT_Vector3> point_positions;
+        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_POINTZ), point_positions))
         {
             return false;
         }
 
-        for(int idx = vertex_first; idx <= vertex_last; ++idx)
+        for(int idx = 0; idx < point_positions.size(); ++idx)
         {
-            float px = shp_object->padfX[idx];
-            float py = shp_object->padfY[idx];
-
-            float pz = 0.0f;
-
-            if(shp_object->nSHPType == SHPT_POINTZ)
-            {
-                pz = shp_object->padfZ[idx];
-            }
+            const UT_Vector3& point_position = point_positions(idx);
 
             GA_Offset point_offset = gdp->appendPoint();
-            gdp->setPos3(point_offset, px, py, pz);
+            gdp->setPos3(point_offset, point_position);
 
             if(group_point)
             {

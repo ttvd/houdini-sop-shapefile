@@ -43,6 +43,9 @@ class SOP_Shapefile : public SOP_Node
         //! Helper function used to retrieve first and last vertex for a given shape part.
         bool getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& vertex_first, int& vertex_last) const;
 
+        //! Given a shape and shape index, retrieve points.
+        bool getShapePointPositions(SHPObject* shp_object, int shape_idx, bool use_z, UT_Array<UT_Vector3>& point_positions) const;
+
     protected:
 
         //! Find or create if not found a point group with a specified name.
