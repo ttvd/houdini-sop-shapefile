@@ -6,7 +6,7 @@
 * [Shapefile C Library](http://shapelib.maptools.org)
 
 ## Binaries, Houdini 16.0
-* [Windows, Houdini 16.0.557]() 
+* [Windows, Houdini 16.0.557](https://github.com/ttvd/houdini-sop-shapefile/releases/download/1.0/SOP_Shapefile.H16.0.557.Win64.rar) 
 
 ## Building
 
