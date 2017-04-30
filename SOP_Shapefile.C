@@ -29,6 +29,7 @@
 
 #define SOP_SHAPEFILE_GROUP_SHAPE_POINT "shape_point"
 #define SOP_SHAPEFILE_GROUP_SHAPE_POLYGON "shape_polygon"
+#define SOP_SHAPEFILE_GROUP_SHAPE_POLYLINE "shape_polyline"
 
 
 static PRM_Name s_name_file(SOP_SHAPEFILE_PARAM_FILE, "Shape File");
@@ -157,7 +158,13 @@ SOP_Shapefile::cookMySop(OP_Context& context)
             }
 
             case SHPT_ARC:
+            case SHPT_ARCZ:
             {
+                if(!addShapePolyline(shp_object, t))
+                {
+                    processWarning("Skipping an invalid polyline shape.");
+                }
+
                 break;
             }
 
@@ -173,17 +180,9 @@ SOP_Shapefile::cookMySop(OP_Context& context)
             }
 
             case SHPT_MULTIPOINT:
-            {
-                break;
-            }
-
-            case SHPT_ARCZ:
-            {
-                break;
-            }
-
             case SHPT_MULTIPOINTZ:
             {
+                processWarning("Skipping unsupported mulitpoint shape.");
                 break;
             }
 
@@ -423,6 +422,63 @@ SOP_Shapefile::addShapePolygon(SHPObject* shp_object, fpreal t)
         }
 
         prim_poly->close();
+
+        if(group_primitive)
+        {
+            GA_Offset prim_offset = prim_poly->getMapOffset();
+            group_primitive->addOffset(prim_offset);
+        }
+
+        if(getParamCreateShapeAttributes(t))
+        {
+            GA_Offset prim_offset = prim_poly->getMapOffset();
+            setPrimitiveAttributeShapeNumber(prim_offset, shp_object->nShapeId);
+            setPrimitiveAttributeShapePartNumber(prim_offset, idp);
+        }
+    }
+
+    return true;
+}
+
+
+bool
+SOP_Shapefile::addShapePolyline(SHPObject* shp_object, fpreal t)
+{
+    if(!shp_object)
+    {
+        return false;
+    }
+
+    if(shp_object->nSHPType != SHPT_ARC && shp_object->nSHPType != SHPT_ARCZ)
+    {
+        return false;
+    }
+
+    GA_PrimitiveGroup* group_primitive = nullptr;
+    if(getParamCreateShapeGroups(t))
+    {
+        group_primitive = findGroupPrimitive(SOP_SHAPEFILE_GROUP_SHAPE_POLYLINE);
+    }
+
+    for(int idp = 0; idp < shp_object->nParts; ++idp)
+    {
+        UT_Array<UT_Vector3> point_positions;
+        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_ARCZ), point_positions))
+        {
+            return false;
+        }
+
+        GU_PrimPoly* prim_poly = GU_PrimPoly::build(gdp, 0, GU_POLY_OPEN);
+
+        for(int idx = 0; idx < point_positions.size(); ++idx)
+        {
+            const UT_Vector3& point_position = point_positions(idx);
+
+            GA_Offset point_offset = gdp->appendPoint();
+            gdp->setPos3(point_offset, point_position);
+
+            prim_poly->appendVertex(point_offset);
+        }
 
         if(group_primitive)
         {

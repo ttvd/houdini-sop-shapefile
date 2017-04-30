@@ -38,6 +38,9 @@ class SOP_Shapefile : public SOP_Node
         //! Process polygon shapes.
         bool addShapePolygon(SHPObject* shp_object, fpreal t);
 
+        //! Process polyline shape.
+        bool addShapePolyline(SHPObject* shp_object, fpreal t);
+
     protected:
 
         //! Helper function used to retrieve first and last vertex for a given shape part.
