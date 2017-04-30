@@ -47,7 +47,8 @@ class SOP_Shapefile : public SOP_Node
         bool getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& vertex_first, int& vertex_last) const;
 
         //! Given a shape and shape index, retrieve points.
-        bool getShapePointPositions(SHPObject* shp_object, int shape_idx, bool use_z, UT_Array<UT_Vector3>& point_positions) const;
+        bool getShapePointPositions(SHPObject* shp_object, int shape_idx, bool use_z, fpreal t,
+            UT_Array<UT_Vector3>& point_positions) const;
 
     protected:
 
@@ -86,6 +87,9 @@ class SOP_Shapefile : public SOP_Node
 
         //! Retrieve whether to create shape attributes.
         bool getParamCreateShapeAttributes(fpreal t) const;
+
+        //! Retrieve whether to flip YZ axis.
+        bool getParamSwapYZAxis(fpreal t) const;
 
     protected:
 

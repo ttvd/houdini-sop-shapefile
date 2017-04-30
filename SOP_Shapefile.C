@@ -20,6 +20,7 @@
 #define SOP_SHAPEFILE_PARAM_FILE "shape_file"
 #define SOP_SHAPEFILE_PARAM_CREATE_SHAPE_GROUPS "create_shape_groups"
 #define SOP_SHAPEFILE_PARAM_CREATE_SHAPE_ATTRIBUTES "create_shape_attributes"
+#define SOP_SHAPEFILE_PARAM_SWAP_YZ_AXIS "swap_yz_axis"
 
 #define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_NUM "point_shape_num"
 #define SOP_SHAPEFILE_ATTRIB_POINT_SHAPE_PART_NUM "point_shape_part_num"
@@ -35,6 +36,7 @@
 static PRM_Name s_name_file(SOP_SHAPEFILE_PARAM_FILE, "Shape File");
 static PRM_Name s_name_create_shape_groups(SOP_SHAPEFILE_PARAM_CREATE_SHAPE_GROUPS, "Create Shape Groups");
 static PRM_Name s_name_create_shape_attributes(SOP_SHAPEFILE_PARAM_CREATE_SHAPE_ATTRIBUTES, "Create Shape Attributes");
+static PRM_Name s_name_swap_yz_axis(SOP_SHAPEFILE_PARAM_SWAP_YZ_AXIS, "Swap YZ Axis");
 static PRM_SpareData s_shape_file_picker(PRM_SpareArgs() << PRM_SpareToken(PRM_SpareData::getFileChooserModeToken(),
     PRM_SpareData::getFileChooserModeValRead()) << PRM_SpareToken(PRM_SpareData::getFileChooserPatternToken(),
     SOP_Shapefile::fileExtensionFilterString()));
@@ -42,6 +44,7 @@ static PRM_SpareData s_shape_file_picker(PRM_SpareArgs() << PRM_SpareToken(PRM_S
 
 static PRM_Default s_default_create_shape_groups(false);
 static PRM_Default s_default_create_shape_attributes(false);
+static PRM_Default s_default_swap_yz_axis(true);
 
 
 PRM_Template
@@ -49,6 +52,7 @@ SOP_Shapefile::myTemplateList[] =
 {
     PRM_Template(PRM_TOGGLE, 1, &s_name_create_shape_groups, &s_default_create_shape_groups),
     PRM_Template(PRM_TOGGLE, 1, &s_name_create_shape_attributes, &s_default_create_shape_attributes),
+    PRM_Template(PRM_TOGGLE, 1, &s_name_swap_yz_axis, &s_default_swap_yz_axis),
     PRM_Template(PRM_FILE, 1, &s_name_file, 0, 0, 0, 0, &s_shape_file_picker),
     PRM_Template()
 };
@@ -267,12 +271,19 @@ SOP_Shapefile::getParamCreateShapeAttributes(fpreal t) const
 
 
 bool
+SOP_Shapefile::getParamSwapYZAxis(fpreal t) const
+{
+    return evalInt(SOP_SHAPEFILE_PARAM_SWAP_YZ_AXIS, 0, t) != 0;
+}
+
+
+bool
 SOP_Shapefile::getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& vertex_first, int& vertex_last) const
 {
     vertex_first = 0;
     vertex_last = 0;
 
-    if(!shp_object || part_idx < 0 || shp_object->nParts >= part_idx)
+    if(!shp_object || part_idx < 0 || shp_object->nParts <= part_idx)
     {
         return false;
     }
@@ -294,7 +305,7 @@ SOP_Shapefile::getShapeVertexIndices(SHPObject* shp_object, int part_idx, int& v
 
 
 bool
-SOP_Shapefile::getShapePointPositions(SHPObject* shp_object, int shp_idx, bool use_z,
+SOP_Shapefile::getShapePointPositions(SHPObject* shp_object, int shp_idx, bool use_z, fpreal t,
     UT_Array<UT_Vector3>& point_positions) const
 {
     point_positions.clear();
@@ -306,6 +317,8 @@ SOP_Shapefile::getShapePointPositions(SHPObject* shp_object, int shp_idx, bool u
 
     int vertex_first = 0;
     int vertex_last = 0;
+
+    bool swap_yz_axis = getParamSwapYZAxis(t);
 
     if(!getShapeVertexIndices(shp_object, shp_idx, vertex_first, vertex_last))
     {
@@ -324,7 +337,14 @@ SOP_Shapefile::getShapePointPositions(SHPObject* shp_object, int shp_idx, bool u
             pz = shp_object->padfZ[idx];
         }
 
-        point_positions.append(UT_Vector3(px, py, pz));
+        if(swap_yz_axis)
+        {
+            point_positions.append(UT_Vector3(px, pz, py));
+        }
+        else
+        {
+            point_positions.append(UT_Vector3(px, py, pz));
+        }
     }
 
     return point_positions.size() > 0;
@@ -353,7 +373,7 @@ SOP_Shapefile::addShapePoint(SHPObject* shp_object, fpreal t)
     for(int idp = 0; idp < shp_object->nParts; ++idp)
     {
         UT_Array<UT_Vector3> point_positions;
-        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_POINTZ), point_positions))
+        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_POINTZ), t, point_positions))
         {
             return false;
         }
@@ -404,7 +424,7 @@ SOP_Shapefile::addShapePolygon(SHPObject* shp_object, fpreal t)
     for(int idp = 0; idp < shp_object->nParts; ++idp)
     {
         UT_Array<UT_Vector3> point_positions;
-        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_POLYGONZ), point_positions))
+        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_POLYGONZ), t, point_positions))
         {
             return false;
         }
@@ -463,7 +483,7 @@ SOP_Shapefile::addShapePolyline(SHPObject* shp_object, fpreal t)
     for(int idp = 0; idp < shp_object->nParts; ++idp)
     {
         UT_Array<UT_Vector3> point_positions;
-        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_ARCZ), point_positions))
+        if(!getShapePointPositions(shp_object, idp, (shp_object->nSHPType == SHPT_ARCZ), t, point_positions))
         {
             return false;
         }
